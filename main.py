@@ -6,11 +6,16 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import pandas as pd
+import time
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/directory.readonly']
 
 Contacts_List = []
+emaillist = []
+namelist = []
+givennamelist = []
+
 
 def main():
     """Shows basic usage of the Docs API. Prints the title of a sample document."""
@@ -18,7 +23,7 @@ def main():
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    emaillist=[]
+    emaillist = []
     namelist = []
     givennamelist = []
     if os.path.exists('token.json'):
@@ -32,7 +37,7 @@ def main():
                 'cred.json',
                 SCOPES,
                 redirect_uri='http://localhost:8080/',
-                  # Add this line to request offline access.
+                # Add this line to request offline access.
             )
 
             creds = flow.run_local_server(
@@ -54,43 +59,46 @@ def main():
 
         while True:
             # Retrieve the document's contents from the Docs service.
+            try:
+                results = service.people().listDirectoryPeople(
+                    readMask="emailAddresses,names",
+                    sources=['DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE'],
+                    pageToken=page_token
+                ).execute()
 
-            results = service.people().listDirectoryPeople(
-                readMask="emailAddresses,names",
-                sources=['DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE'],
-                pageToken=page_token
-            ).execute()
+                connections = results.get('people', [])
 
+                for person in connections:
+                    emails = person.get('emailAddresses', [])
+                    names = person.get('names', [])
 
-            connections = results.get('people', [])
+                    if names:
+                        name = names[0].get('displayName')
+                        givenname = names[0].get('givenName')
+                        givennamelist.append(givenname)
+                        namelist.append(name)
+                    else:
+                        name = 'Student'
+                        givenname = 'Student'
+                        namelist.append(name)
+                        givennamelist.append(givenname)
+                    if emails:
+                        email = emails[0].get('value')
 
-            for person in connections:
-                emails = person.get('emailAddresses', [])
-                names = person.get('names', [])
+                        emaillist.append(email)
+                        count += 1
+                    else:
+                        email = ''
+                        email.append(name)
 
-                if names:
-                    name = names[0].get('displayName')
-                    givenname = names[0].get('givenName')
-                    givennamelist.append(givenname)
-                    namelist.append(name)
-                else:
-                    name = 'Student'
-                    givenname = 'Student'
-                    namelist.append(name)
-                    givennamelist.append(givenname)
-                if emails:
-                    email = emails[0].get('value')
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
 
-                    emaillist.append(email)
-                    count += 1
-                else:
-                    email = ''
-                    email.append(name)
-
-            page_token = results.get('nextPageToken')
-            if not page_token:
-                break
-
+            except HttpError as err:
+                print(err)
+                print("Waiting for 2 minutes before continuing...")
+                time.sleep(120)  # Wait for 2 minutes before continuing
 
     except HttpError as err:
         print(err)
@@ -98,5 +106,7 @@ def main():
     info = pd.DataFrame(dict)
     print(info)
     info.to_csv('info.csv')
+
+
 if __name__ == '__main__':
     main()
