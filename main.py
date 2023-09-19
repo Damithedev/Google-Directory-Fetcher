@@ -20,6 +20,7 @@ def main():
     # time.
     emaillist=[]
     namelist = []
+    givennamelist = []
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
     # If there are no (valid) credentials available, let the user log in.
@@ -70,10 +71,13 @@ def main():
                 if names:
                     name = names[0].get('displayName')
                     givenname = names[0].get('givenName')
+                    givennamelist.append(givenname)
                     namelist.append(name)
                 else:
-                    name = ''
+                    name = 'Student'
+                    givenname = 'Student'
                     namelist.append(name)
+                    givennamelist.append(givenname)
                 if emails:
                     email = emails[0].get('value')
 
@@ -90,7 +94,7 @@ def main():
 
     except HttpError as err:
         print(err)
-    dict = {'name': namelist, 'emaillist': emaillist, 'givenname': givenname}
+    dict = {'name': namelist, 'email List': emaillist, 'Given name': givennamelist}
     info = pd.DataFrame(dict)
     print(info)
     info.to_csv('info.csv')
